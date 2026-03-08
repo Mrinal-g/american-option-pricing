@@ -4,12 +4,12 @@
 # import sys
 # from pathlib import Path
 
-# # Allow running from project root: python scripts/run_all.py
 # PROJECT_ROOT = Path(__file__).resolve().parents[1]
 # SRC_PATH = PROJECT_ROOT / "src"
 # sys.path.append(str(SRC_PATH))
 
 # from option_pricing.black_scholes import BlackScholesEngine
+# from option_pricing.binomial_crr import CRREngine
 # from option_pricing.config import ProjectConfig
 # from option_pricing.data import build_market_dataframe
 # from option_pricing.instruments import OptionContract
@@ -68,7 +68,6 @@
 #     print(market)
 #     print()
 
-#     # Black-Scholes requires a European option
 #     european_contract = OptionContract(
 #         option_type=cfg.option_type,
 #         strike=cfg.strikes[0],
@@ -95,6 +94,39 @@
 
 #     print(f"vega  : {bs_result.vega:.6f}")
 #     print(f"rho   : {bs_result.rho:.6f}")
+#     print()
+
+#     crr_engine = CRREngine(steps=cfg.crr_steps)
+
+#     crr_euro_result = crr_engine.price(european_contract, market)
+#     crr_amer_result = crr_engine.price(contract, market)
+
+#     print("=== CRR Binomial Result (European) ===")
+#     print(f"option type : {european_contract.option_type}")
+#     print(f"style       : {european_contract.style}")
+#     print(f"steps       : {cfg.crr_steps}")
+#     print(f"price       : {crr_euro_result.price:.6f}")
+#     print(f"delta       : {crr_euro_result.delta:.6f}")
+#     print(f"gamma       : {crr_euro_result.gamma:.6f}")
+#     print(f"theta       : {crr_euro_result.theta:.6f}")
+#     print()
+
+#     print("=== CRR Binomial Result (American) ===")
+#     print(f"option type : {contract.option_type}")
+#     print(f"style       : {contract.style}")
+#     print(f"steps       : {cfg.crr_steps}")
+#     print(f"price       : {crr_amer_result.price:.6f}")
+#     print(f"delta       : {crr_amer_result.delta:.6f}")
+#     print(f"gamma       : {crr_amer_result.gamma:.6f}")
+#     print(f"theta       : {crr_amer_result.theta:.6f}")
+#     print()
+
+#     print("=== Comparison ===")
+#     print(f"BS European Price   : {bs_result.price:.6f}")
+#     print(f"CRR European Price  : {crr_euro_result.price:.6f}")
+#     print(f"CRR American Price  : {crr_amer_result.price:.6f}")
+#     print(f"American Premium    : {crr_amer_result.price - crr_euro_result.price:.6f}")
+#     print(f"CRR - BS Error      : {crr_euro_result.price - bs_result.price:.6f}")
 
 
 # if __name__ == "__main__":
@@ -116,6 +148,7 @@ from option_pricing.data import build_market_dataframe
 from option_pricing.instruments import OptionContract
 from option_pricing.market import MarketData
 from option_pricing.stats import summarize_market_inputs
+from option_pricing.validation import run_crr_convergence_study, summarize_convergence
 
 
 def main() -> None:
@@ -228,6 +261,26 @@ def main() -> None:
     print(f"CRR American Price  : {crr_amer_result.price:.6f}")
     print(f"American Premium    : {crr_amer_result.price - crr_euro_result.price:.6f}")
     print(f"CRR - BS Error      : {crr_euro_result.price - bs_result.price:.6f}")
+    print()
+
+    convergence_df = run_crr_convergence_study(
+        contract=european_contract,
+        market=market,
+        step_list=[10, 25, 50, 100, 250, 500, 1000],
+    )
+
+    convergence_summary = summarize_convergence(convergence_df)
+
+    print("=== CRR Convergence Study ===")
+    print(convergence_df.to_string(index=False))
+    print()
+
+    print("=== Convergence Summary ===")
+    for key, value in convergence_summary.items():
+        if isinstance(value, float):
+            print(f"{key}: {value:.6f}")
+        else:
+            print(f"{key}: {value}")
 
 
 if __name__ == "__main__":
